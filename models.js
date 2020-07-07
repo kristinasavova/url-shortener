@@ -26,16 +26,15 @@ const URLSchema = new mongoose.Schema({
 URLSchema.pre('save', function(next) {
     // 'this' refers to the document to be saved 
     const { hostname } = url.parse(this.urlString);
-    if (hostname) {
-        dns.lookup(hostname, err => {
-            if (err) return next(err); 
-            return next(); 
-        });
-    } else {
-        const err = new Error('invalid URL');
-        err.status = 400;
-        return next(err); 
-    }
+    dns.lookup(hostname, err => {
+        if (err || !hostname) {
+            const error = new Error('invalid URL');
+            error.status = 400; 
+            return next(error);  
+        } else {
+            next();
+        }
+    });
 });
 
 /**
