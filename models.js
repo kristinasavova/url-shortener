@@ -3,30 +3,21 @@ const dns = require('dns');
 const url = require('url');
 
 const URLSchema = new mongoose.Schema({
-    URLString: {
+    urlString: {
         type: String,
         trim: true,
         unique: true, 
         required: true
     }, 
-    shortURL: {
-        type: Number,
-        unique: true,
-        default: 1 
-    },
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    index: {
+        type: Number,
+        unique: true,
+        required: true
     }
-});
-
-URLSchema.method('shorten', function(shortURL, callback) {
-    // 'this' refers to the instance of the document itself
-    const url = URL.find({ shortURL }, (err, url) => {
-        if (url) {
-            this.shortURL ++;
-        }
-    });
 });
 
 /**
@@ -34,12 +25,11 @@ URLSchema.method('shorten', function(shortURL, callback) {
  */
 URLSchema.pre('save', function(next) {
     // 'this' refers to the document to be saved 
-    const { hostname } = url.parse(this.URLString);
+    const { hostname } = url.parse(this.urlString);
     if (hostname) {
-        dns.lookup(hostname, (err, address, family) => {
+        dns.lookup(hostname, err => {
             if (err) return next(err); 
-            console.log(address, family);
-            next(); 
+            return next(); 
         });
     } else {
         const err = new Error('invalid URL');
@@ -47,6 +37,14 @@ URLSchema.pre('save', function(next) {
         return next(err); 
     }
 });
+
+/**
+ * Find the last created URL in the collection   
+ */
+URLSchema.statics.findLastURL = function(callback) {
+    // 'this' refers to the model - URL 
+    return this.find({}, {}, { sort: { 'createdAt': -1 }, limit: 1 }, callback);
+};
 
 const URL = mongoose.model('URL', URLSchema);  
 
